@@ -43,7 +43,7 @@ List all Pokémon TCG series, or look up a specific one.
 ## Setup
 
 ### Prerequisites
-- [Node.js](https://nodejs.org) v18 or higher
+- [Node.js](https://nodejs.org) v22 or higher
 - A Discord bot token — create one at the [Discord Developer Portal](https://discord.com/developers/applications)
 
 ### Installation
@@ -79,6 +79,33 @@ List all Pokémon TCG series, or look up a specific one.
    ```bash
    node src/index.js
    ```
+
+---
+
+## Deploying to Railway
+
+[Railway](https://railway.app) is the recommended way to host the bot so it runs 24/7 without leaving your machine on.
+
+The project includes a `railway.json` that configures the build and sets the bot to automatically restart if it crashes.
+
+### Steps
+
+1. Push your code to a GitHub repository
+
+2. Go to [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo** and select your repository
+
+3. Once the project is created, go to **Variables** and add the following:
+
+   | Variable | Description |
+   |----------|-------------|
+   | `DISCORD_TOKEN` | Your bot's token from the Developer Portal |
+   | `CLIENT_ID` | Your bot's application ID |
+
+4. Railway will automatically build and deploy the bot. You can monitor logs from the Railway dashboard.
+
+> **Note:** You do not need a `.env` file on Railway — environment variables are set directly in the dashboard. The `GUILD_ID` variable is only needed locally for development and does not need to be added to Railway.
+
+> **Note:** Slash commands only need to be registered once with `node deploy-commands.js` from your local machine. You do not need to run this on Railway.
 
 ---
 
