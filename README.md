@@ -1,42 +1,44 @@
 # TCGDex Bot
 
-A Discord bot for looking up Pokémon Trading Card Game cards, sets, and series using the [TCGDex API](https://tcgdex.dev).
+A Discord bot for looking up Pokémon and Riftbound Trading Card Game cards, sets, and series.
 
 ## Commands
 
-### `/card <name>`
-Look up a Pokémon TCG card by name. Supports smart search — you can include the card type and set name in your query.
+All commands have aliases — e.g. `/pokemon_card` can also be called via `/poke_card` or `/pkm_card`.
 
-**Examples:**
-- `/card charizard` — shows all Charizard cards to pick from
-- `/card charizard flashfire` — narrows results to cards from Flashfire
-- `/card mega charizard ex` — shows only Mega/M Charizard EX cards
-- `/card m gengar` — same as typing "mega gengar"
-- `/card charizard ex flashfire` — Charizard EX cards from Flashfire specifically
+### Pokémon TCG
 
-If no exact match is found, the bot suggests similar results with a "Did you mean..." prompt.
+| Command | Aliases | Description |
+|---------|---------|-------------|
+| `/pokemon_card <name>` | `/poke_card`, `/pkm_card` | Search for a Pokémon TCG card. Supports smart input — include a card type suffix (ex, gx, v, vmax, mega) and/or set name. |
+| `/pokemon_set <name or ID>` | `/poke_set`, `/pkm_set` | Look up a Pokémon TCG set by name or ID (e.g. `base1`, `flashfire`). |
+| `/pokemon_series [name]` | `/poke_series`, `/pkm_series` | List all TCG series, or look up a specific one by name. |
 
-When multiple results are returned, a dropdown menu appears showing each card's set and rarity so you can pick the right one.
-
----
-
-### `/set <name or ID>`
-Look up a Pokémon TCG set by name or ID.
-
-**Examples:**
-- `/set base1` — Base Set by ID
-- `/set Scarlet & Violet` — by full name
-- `/set flashfire` — partial name match
-
-Returns the set's series, release date, card count, and formats it is legal in.
+**Pokémon card search examples:**
+- `/pokemon_card charizard` — all Charizard cards
+- `/pokemon_card charizard flashfire` — Charizard cards from Flashfire
+- `/pokemon_card mega charizard ex` — Mega/M Charizard EX only
+- `/pokemon_card charizard ex flashfire` — card type + set combined
 
 ---
 
-### `/series [name]`
-List all Pokémon TCG series, or look up a specific one.
+### Riftbound TCG
 
-- `/series` — lists every series
-- `/series sword shield` — shows all sets in the Sword & Shield series
+| Command | Aliases | Description |
+|---------|---------|-------------|
+| `/riftbound_card <name>` | `/rb_card`, `/rift_card` | Search for a Riftbound card by name. Optionally append a set name to filter results. |
+
+**Riftbound card search examples:**
+- `/riftbound_card yasuo` — all Yasuo cards
+- `/riftbound_card ahri spiritforged` — Ahri cards from the Spiritforged set
+
+---
+
+### General
+
+| Command | Description |
+|---------|-------------|
+| `/help` | Shows a dropdown listing all commands with descriptions and examples. |
 
 ---
 
@@ -82,45 +84,68 @@ List all Pokémon TCG series, or look up a specific one.
 
 ---
 
-## Deploying to Railway
+## Local Development vs Production
 
-[Railway](https://railway.app) is the recommended way to host the bot so it runs 24/7 without leaving your machine on.
+The recommended workflow is to run a separate dev bot locally for testing and let Railway host the production bot.
 
-The project includes a `railway.json` that configures the build and sets the bot to automatically restart if it crashes.
+### Two bots, two environments
 
-### Steps
+| | Dev | Production |
+|---|---|---|
+| Bot name | `TCGDexDev` | `TCGDex` |
+| Runs on | Your PC | Railway |
+| Commands update | Instantly (guild-scoped) | Up to 1 hour (global) |
+| Config | Local `.env` | Railway dashboard variables |
 
-1. Push your code to a GitHub repository
+### Setting up the dev bot
 
-2. Go to [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo** and select your repository
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications) and create a second application called `TCGDexDev`
+2. Create a bot user for it, copy the token, and invite it to your server
+3. Set your local `.env` to use the dev bot's credentials and add your `GUILD_ID`:
 
-3. Once the project is created, go to **Variables** and add the following:
+```env
+DISCORD_TOKEN=your-dev-bot-token
+CLIENT_ID=your-dev-client-id
+GUILD_ID=your-server-id
+```
 
-   | Variable | Description |
-   |----------|-------------|
-   | `DISCORD_TOKEN` | Your bot's token from the Developer Portal |
-   | `CLIENT_ID` | Your bot's application ID |
+`GUILD_ID` scopes commands to your server so they register instantly. Leave it out of Railway's variables so production commands register globally.
 
-4. Railway will automatically build and deploy the bot. You can monitor logs from the Railway dashboard.
+### Workflow
 
-> **Note:** You do not need a `.env` file on Railway — environment variables are set directly in the dashboard. The `GUILD_ID` variable is only needed locally for development and does not need to be added to Railway.
-
-> **Note:** Slash commands only need to be registered once with `node deploy-commands.js` from your local machine. You do not need to run this on Railway.
+- Develop and test locally with `node src/index.js` — changes appear on `TCGDexDev` immediately
+- When ready, push to GitHub — Railway automatically redeploys the production bot
 
 ---
 
-## TCG Data — TCGDex API
+## Deploying to Railway
 
-All card, set, and series data is provided by **[TCGDex](https://tcgdex.dev)**, a free and open-source Pokémon TCG database.
+[Railway](https://railway.app) is the recommended way to host the bot so it runs 24/7.
 
-- **API base URL:** `https://api.tcgdex.net/v2/en`
+1. Push your code to a GitHub repository
+2. Go to [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo**
+3. Under **Variables**, add `DISCORD_TOKEN` and `CLIENT_ID`
+4. Railway will build and deploy automatically — monitor logs from the dashboard
+
+> **Note:** You do not need a `.env` file on Railway. `GUILD_ID` is only needed locally.
+
+> **Note:** Slash commands only need to be registered once with `node deploy-commands.js` from your local machine.
+
+---
+
+## Data Sources
+
+### Pokémon TCG — TCGDex API
+All Pokémon card, set, and series data is provided by **[TCGDex](https://tcgdex.dev)**, a free and open-source Pokémon TCG database.
+
 - **SDK:** [`@tcgdex/sdk`](https://www.npmjs.com/package/@tcgdex/sdk)
 - **Docs:** [tcgdex.dev/docs](https://tcgdex.dev/docs)
-- **GitHub:** [github.com/tcgdex](https://github.com/tcgdex)
 
-The TCGDex API is free to use, requires no authentication, and covers cards from the Base Set (1999) through current releases in multiple languages. This bot uses the English (`en`) endpoint.
+### Riftbound TCG — Riftcodex API
+Riftbound card data is provided by **[Riftcodex](https://riftcodex.com)**, a community-built Riftbound TCG database.
 
-Card data includes names, types, HP, rarity, illustrator, set information, and high-resolution card images.
+- **API base URL:** `https://api.riftcodex.com`
+- **Docs:** [riftcodex.com/docs](https://riftcodex.com/docs/endpoints/cards/)
 
 ---
 

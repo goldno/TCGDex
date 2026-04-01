@@ -9,7 +9,13 @@ const commandFiles = fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'))
 
 for (const file of commandFiles) {
   const command = require(path.join(commandsPath, file));
-  commands.push(command.data.toJSON());
+  const mainJson = command.data.toJSON();
+  commands.push(mainJson);
+
+  // Register each alias as a separate slash command with the same options as the main command
+  for (const alias of command.aliases ?? []) {
+    commands.push({ ...mainJson, name: alias });
+  }
 }
 
 const rest = new REST().setToken(process.env.DISCORD_TOKEN);

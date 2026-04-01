@@ -3,8 +3,20 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const BASE = 'https://api.tcgdex.net/v2/en';
 
 module.exports = {
+  help: {
+    description: 'Look up a Pokémon TCG set by name or ID.',
+    examples: [
+      '`/pokemon_set base1` — look up by set ID',
+      '`/pokemon_set flashfire` — look up by name',
+      '`/pokemon_set Scarlet & Violet` — full name match',
+    ],
+  },
+
+  // Aliases registered in Discord alongside the main command name
+  aliases: ['poke_set', 'pkm_set'],
+
   data: new SlashCommandBuilder()
-    .setName('set')
+    .setName('pokemon_set')
     .setDescription('Look up a Pokémon TCG card set')
     .addStringOption(opt =>
       opt.setName('name')

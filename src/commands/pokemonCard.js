@@ -73,6 +73,41 @@ async function showCard(interaction, cardId) {
   if (detail.types?.length) embed.addFields({ name: 'Type(s)', value: detail.types.join(', '), inline: true });
   if (detail.illustrator) embed.addFields({ name: 'Illustrator', value: detail.illustrator, inline: true });
 
+  // Show which print variants exist for this card (Normal, Reverse Holo, Holo, First Edition)
+  if (detail.variants) {
+    const variantLabels = {
+      normal: 'Normal',
+      reverse: 'Reverse Holo',
+      holo: 'Holo',
+      firstEdition: 'First Edition',
+    };
+    const available = Object.entries(detail.variants)
+      .filter(([key, exists]) => exists && variantLabels[key])
+      .map(([key]) => variantLabels[key])
+      .join(', ');
+    if (available) embed.addFields({ name: 'Variants', value: available, inline: false });
+  }
+
+  // Show TCGPlayer market prices for each available variant
+  // The pricing keys use different names than the variant keys, so we map them explicitly
+  if (detail.pricing?.tcgplayer) {
+    const tcp = detail.pricing.tcgplayer;
+    const variantPrices = [
+      ['Normal',              tcp.normal],
+      ['Reverse Holo',        tcp['reverse-holofoil']],
+      ['Holo',                tcp.holofoil],
+      ['1st Edition',         tcp['1st-edition']],
+      ['1st Edition Holo',    tcp['1st-edition-holofoil']],
+      ['Unlimited',           tcp.unlimited],
+    ];
+    const lines = variantPrices
+      .filter(([, data]) => data?.marketPrice != null)
+      .map(([label, data]) => `${label}: $${data.marketPrice.toFixed(2)}`);
+    if (lines.length) {
+      embed.addFields({ name: `TCGPlayer Market Price (${tcp.unit})`, value: lines.join('\n'), inline: false });
+    }
+  }
+
   await interaction.editReply({ content: null, embeds: [embed], components: [] });
 }
 
@@ -84,10 +119,26 @@ async function showMenu(interaction, cards, content) {
     cards.slice(0, 25).map(c => tcgdex.card.get(c.id).catch(() => null))
   );
 
-  // Build one dropdown option per card — label is the card name, description shows set · rarity
+  // Build one dropdown option per card — label is the card name, description shows set · rarity · #number · variants
   const options = details.map((detail, i) => {
     const card = cards[i];
-    const parts = [detail?.set?.name, detail?.rarity].filter(Boolean);
+
+    // Shorten variant names to keep the description within Discord's 100 character limit
+    const variantLabels = { normal: 'Normal', reverse: 'Reverse', holo: 'Holo', firstEdition: '1st Ed' };
+    const variants = detail?.variants
+      ? Object.entries(detail.variants)
+          .filter(([key, exists]) => exists && variantLabels[key])
+          .map(([key]) => variantLabels[key])
+          .join(', ')
+      : null;
+
+    const parts = [
+      detail?.set?.name,
+      detail?.rarity,
+      detail?.localId ? `#${detail.localId}` : null,
+      variants,
+    ].filter(Boolean);
+
     const desc = parts.length ? parts.join(' · ') : card.id;
     return new StringSelectMenuOptionBuilder()
       .setLabel(card.name)
@@ -97,7 +148,7 @@ async function showMenu(interaction, cards, content) {
 
   // Wrap the options in a select menu, then wrap that in an action row (Discord requires this)
   const menu = new StringSelectMenuBuilder()
-    .setCustomId('card_select')
+    .setCustomId('pokemon_card_select')
     .setPlaceholder('Choose a card...')
     .addOptions(options);
 
@@ -129,9 +180,23 @@ async function showMenu(interaction, cards, content) {
 }
 
 module.exports = {
+  help: {
+    description: 'Look up a Pokémon TCG card by name. Supports smart search — include the card type and set name in your query.',
+    examples: [
+      '`/pokemon_card charizard` — all Charizard cards',
+      '`/pokemon_card charizard flashfire` — narrow by set name',
+      '`/pokemon_card mega charizard ex` — Mega/M Charizard EX cards only',
+      '`/pokemon_card m gengar` — same as typing "mega gengar"',
+      '`/pokemon_card charizard ex flashfire` — card type + set combined',
+    ],
+  },
+
+  // Aliases registered in Discord alongside the main command name
+  aliases: ['poke_card', 'pkm_card'],
+
   // Register the slash command with Discord — defines the name, description, and options
   data: new SlashCommandBuilder()
-    .setName('card')
+    .setName('pokemon_card')
     .setDescription('Look up a Pokémon TCG card')
     .addStringOption(opt =>
       opt.setName('name')

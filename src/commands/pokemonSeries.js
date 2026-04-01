@@ -3,8 +3,19 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const BASE = 'https://api.tcgdex.net/v2/en';
 
 module.exports = {
+  help: {
+    description: 'List all Pokémon TCG series, or look up a specific one.',
+    examples: [
+      '`/pokemon_series` — list every series',
+      '`/pokemon_series sword shield` — sets in a specific series',
+    ],
+  },
+
+  // Aliases registered in Discord alongside the main command name
+  aliases: ['poke_series', 'pkm_series'],
+
   data: new SlashCommandBuilder()
-    .setName('series')
+    .setName('pokemon_series')
     .setDescription('List all Pokémon TCG series, or look up one by name')
     .addStringOption(opt =>
       opt.setName('name')
