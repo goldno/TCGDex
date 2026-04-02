@@ -1,19 +1,21 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
-const fs = require('fs');
+const fs   = require('fs');
 const path = require('path');
+const cron = require('node-cron');
+
+const syncPrices = require('./priceSync');
+const syncCards  = require('./syncCards');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
 
-const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'));
+const commandsPath  = path.join(__dirname, 'commands');
+const commandFiles  = fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'));
 
 for (const file of commandFiles) {
   const command = require(path.join(commandsPath, file));
-  // Register the main command name
   client.commands.set(command.data.name, command);
-  // Register each alias so they all route to the same handler
   for (const alias of command.aliases ?? []) {
     client.commands.set(alias, command);
   }
@@ -21,6 +23,17 @@ for (const file of commandFiles) {
 
 client.once('ready', () => {
   console.log(`Logged in as ${client.user.tag}`);
+
+  // Daily price sync at 21:00 UTC — 1 hour after TCGCSV updates its prices
+  cron.schedule('0 21 * * *', () => {
+    syncPrices().catch(console.error);
+  });
+
+  // Weekly card discovery every Monday at 22:00 UTC
+  // Picks up any new sets that released since the last run
+  cron.schedule('0 22 * * 1', () => {
+    syncCards().catch(console.error);
+  });
 });
 
 client.on('interactionCreate', async interaction => {
