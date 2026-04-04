@@ -1,6 +1,6 @@
 # TCGDex Bot
 
-A Discord bot for looking up Pokémon and Riftbound Trading Card Game cards, sets, and series.
+A Discord bot for looking up Pokémon and Riftbound Trading Card Game cards, sets, and series — with TCGPlayer price history tracking for high-rarity cards.
 
 ## Commands
 
@@ -10,7 +10,7 @@ All commands have aliases — e.g. `/pokemon_card` can also be called via `/poke
 
 | Command | Aliases | Description |
 |---------|---------|-------------|
-| `/pokemon_card <name>` | `/poke_card`, `/pkm_card` | Search for a Pokémon TCG card. Supports smart input — include a card type suffix (ex, gx, v, vmax, mega) and/or set name. |
+| `/pokemon_card <name>` | `/poke_card`, `/pkm_card` | Search for a Pokémon TCG card. Supports smart input — include a card type suffix (ex, gx, v, vmax, mega, prime, sir, ir) and/or set name. |
 | `/pokemon_set <name or ID>` | `/poke_set`, `/pkm_set` | Look up a Pokémon TCG set by name or ID (e.g. `base1`, `flashfire`). |
 | `/pokemon_series [name]` | `/poke_series`, `/pkm_series` | List all TCG series, or look up a specific one by name. |
 
@@ -18,7 +18,8 @@ All commands have aliases — e.g. `/pokemon_card` can also be called via `/poke
 - `/pokemon_card charizard` — all Charizard cards
 - `/pokemon_card charizard flashfire` — Charizard cards from Flashfire
 - `/pokemon_card mega charizard ex` — Mega/M Charizard EX only
-- `/pokemon_card charizard ex flashfire` — card type + set combined
+- `/pokemon_card gengar prime` — Gengar cards with Rare PRIME rarity
+- `/pokemon_card pikachu sir` — Pikachu Special Illustration Rares
 
 ---
 
@@ -31,6 +32,20 @@ All commands have aliases — e.g. `/pokemon_card` can also be called via `/poke
 **Riftbound card search examples:**
 - `/riftbound_card yasuo` — all Yasuo cards
 - `/riftbound_card ahri spiritforged` — Ahri cards from the Spiritforged set
+
+---
+
+### Price History
+
+| Command | Aliases | Description |
+|---------|---------|-------------|
+| `/price_history <name>` | `/ph` | Show TCGPlayer price history for a tracked high-rarity card. |
+
+Price history is tracked daily for all **high-rarity cards** (collector number exceeds base set total, e.g. 204/165) from the **Scarlet & Violet era onwards**, including Mega Evolution sets. New sets are picked up automatically each week as they become available.
+
+**Examples:**
+- `/price_history charizard` — find tracked Charizard cards
+- `/price_history pikachu ex` — find tracked Pikachu ex cards
 
 ---
 
@@ -47,6 +62,7 @@ All commands have aliases — e.g. `/pokemon_card` can also be called via `/poke
 ### Prerequisites
 - [Node.js](https://nodejs.org) v22 or higher
 - A Discord bot token — create one at the [Discord Developer Portal](https://discord.com/developers/applications)
+- A PostgreSQL database (Railway Postgres recommended)
 
 ### Installation
 
@@ -70,17 +86,49 @@ All commands have aliases — e.g. `/pokemon_card` can also be called via `/poke
    |----------|-------------|
    | `DISCORD_TOKEN` | Your bot's token from the Developer Portal |
    | `CLIENT_ID` | Your bot's application ID |
+   | `DATABASE_URL` | PostgreSQL connection string |
    | `GUILD_ID` | *(Optional)* A specific server ID for instant command registration during development |
 
-4. Register the slash commands with Discord:
+   > **Local development:** Use `DATABASE_PUBLIC_URL` from Railway (the public-facing hostname). The internal `DATABASE_URL` only works inside Railway's network.
+
+4. Create the database tables:
+   ```bash
+   node src/migrate.js
+   ```
+
+5. Populate tracked cards (high-rarity SV/ME cards):
+   ```bash
+   node src/syncCards.js
+   ```
+
+6. Run an initial price snapshot:
+   ```bash
+   node src/priceSync.js
+   ```
+
+7. Register the slash commands with Discord:
    ```bash
    node deploy-commands.js
    ```
 
-5. Start the bot:
+8. Start the bot:
    ```bash
    node src/index.js
    ```
+
+---
+
+## Price Tracking
+
+The bot automatically tracks TCGPlayer market prices for high-rarity cards (collector number > base set total) from the Scarlet & Violet era and Mega Evolution sets onwards.
+
+**How it works:**
+- **Daily at 21:00 UTC** — fetches current prices from [TCGCSV](https://tcgcsv.com) (a free public TCGPlayer data mirror) and saves a snapshot to the database
+- **Weekly on Mondays at 22:00 UTC** — scans for newly released sets and adds their high-rarity cards to the tracking list automatically
+- Price data includes Normal, Holofoil, and Reverse Holofoil variants where available
+
+**What counts as high-rarity?**
+Any card whose collector number exceeds the base set total — e.g. a set with 165 base cards where high-rarity cards are numbered 166–220. This captures Illustration Rares, Special Illustration Rares, Gold cards, etc.
 
 ---
 
@@ -107,6 +155,7 @@ The recommended workflow is to run a separate dev bot locally for testing and le
 DISCORD_TOKEN=your-dev-bot-token
 CLIENT_ID=your-dev-client-id
 GUILD_ID=your-server-id
+DATABASE_URL=your-railway-public-database-url
 ```
 
 `GUILD_ID` scopes commands to your server so they register instantly. Leave it out of Railway's variables so production commands register globally.
@@ -124,22 +173,26 @@ GUILD_ID=your-server-id
 
 1. Push your code to a GitHub repository
 2. Go to [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo**
-3. Under **Variables**, add `DISCORD_TOKEN` and `CLIENT_ID`
-4. Railway will build and deploy automatically — monitor logs from the dashboard
+3. Add a **PostgreSQL** database service to the project
+4. Under the bot service **Variables**, add `DISCORD_TOKEN`, `CLIENT_ID`, and link `DATABASE_URL` from the Postgres service
+5. Railway will build and deploy automatically — monitor logs from the dashboard
 
-> **Note:** You do not need a `.env` file on Railway. `GUILD_ID` is only needed locally.
+> **Note:** Run `node src/migrate.js` and `node src/syncCards.js` locally (with `DATABASE_URL` pointed at the public Railway Postgres URL) before or just after first deploy to initialise the database.
 
-> **Note:** Slash commands only need to be registered once with `node deploy-commands.js` from your local machine.
+> **Note:** `deploy-commands.js` runs automatically on each Railway deploy via `railway.json`.
 
 ---
 
 ## Data Sources
 
 ### Pokémon TCG — TCGDex API
-All Pokémon card, set, and series data is provided by **[TCGDex](https://tcgdex.dev)**, a free and open-source Pokémon TCG database.
+Card, set, and series data is provided by **[TCGDex](https://tcgdex.dev)**, a free and open-source Pokémon TCG database.
 
 - **SDK:** [`@tcgdex/sdk`](https://www.npmjs.com/package/@tcgdex/sdk)
 - **Docs:** [tcgdex.dev/docs](https://tcgdex.dev/docs)
+
+### Pokémon TCG Pricing — TCGCSV
+Daily TCGPlayer market price snapshots are sourced from **[TCGCSV](https://tcgcsv.com)**, a free public mirror of TCGPlayer's pricing data updated daily at ~20:00 UTC.
 
 ### Riftbound TCG — Riftcodex API
 Riftbound card data is provided by **[Riftcodex](https://riftcodex.com)**, a community-built Riftbound TCG database.
@@ -155,4 +208,6 @@ Riftbound card data is provided by **[Riftcodex](https://riftcodex.com)**, a com
 |---------|---------|
 | [`discord.js`](https://discord.js.org) | Discord bot framework |
 | [`@tcgdex/sdk`](https://tcgdex.dev) | TCGDex API client |
+| [`pg`](https://github.com/brianc/node-postgres) | PostgreSQL client |
+| [`node-cron`](https://github.com/node-cron/node-cron) | Scheduled jobs for daily price sync |
 | [`dotenv`](https://github.com/motdotla/dotenv) | Loads environment variables from `.env` |
