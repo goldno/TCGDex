@@ -1,11 +1,13 @@
 require('dotenv').config();
 const express = require('express');
+const cors = require('cors');
 const cron = require('node-cron');
 
 const syncPrices = require('../src/priceSync');
 const syncCards  = require('../src/syncCards');
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 app.use('/cards', require('./routes/cards'));
