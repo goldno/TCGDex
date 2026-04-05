@@ -14,7 +14,8 @@ async function migrate() {
       collector_number INTEGER NOT NULL,
       set_total        INTEGER NOT NULL,
       image_url        TEXT,
-      tcgplayer_url    TEXT
+      tcgplayer_url    TEXT,
+      rarity           TEXT
     );
 
     -- One row per card per day per variant (Normal, Holofoil, Reverse Holofoil)

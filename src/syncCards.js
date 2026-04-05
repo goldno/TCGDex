@@ -75,14 +75,20 @@ async function syncCards() {
       // Only track cards whose collector number exceeds the base set total
       if (collectorNum <= setTotal) continue;
 
+      const rarityField = Array.isArray(product.extendedData)
+        ? product.extendedData.find(f => f.name === 'Rarity')
+        : null;
+      const rarity = rarityField?.value ?? null;
+
       await db.query(
         `INSERT INTO tracked_cards
-           (product_id, group_id, set_name, name, collector_number, set_total, image_url, tcgplayer_url)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+           (product_id, group_id, set_name, name, collector_number, set_total, image_url, tcgplayer_url, rarity)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
          ON CONFLICT (product_id) DO UPDATE
            SET name          = EXCLUDED.name,
                image_url     = EXCLUDED.image_url,
-               tcgplayer_url = EXCLUDED.tcgplayer_url`,
+               tcgplayer_url = EXCLUDED.tcgplayer_url,
+               rarity        = EXCLUDED.rarity`,
         [
           product.productId,
           set.groupId,
@@ -92,6 +98,7 @@ async function syncCards() {
           setTotal,
           product.imageUrl ?? null,
           product.url      ?? null,
+          rarity,
         ]
       );
       count++;

@@ -132,12 +132,16 @@ module.exports = {
     if (rows.length === 1) return showPriceHistory(interaction, rows[0].product_id);
 
     // Multiple matches — show dropdown
-    const options = rows.map(card =>
-      new StringSelectMenuOptionBuilder()
+    const options = rows.map(card => {
+      const desc = [
+        `${card.set_name} — #${card.collector_number}/${card.set_total}`,
+        card.rarity,
+      ].filter(Boolean).join(' · ');
+      return new StringSelectMenuOptionBuilder()
         .setLabel(cleanName(card.name).slice(0, 100))
-        .setDescription(`${card.set_name} — #${card.collector_number}/${card.set_total}`.slice(0, 100))
-        .setValue(String(card.product_id))
-    );
+        .setDescription(desc.slice(0, 100))
+        .setValue(String(card.product_id));
+    });
 
     const menu = new StringSelectMenuBuilder()
       .setCustomId('price_history_select')
