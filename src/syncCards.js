@@ -4,8 +4,11 @@
 // Runs automatically on a weekly cron via index.js.
 // Can also be run manually: node src/syncCards.js
 require('dotenv').config();
-const db = require('./db');
+const db      = require('./db');
+const TCGdex  = require('@tcgdex/sdk').default;
+const { Query } = require('@tcgdex/sdk');
 
+const tcgdex      = new TCGdex('en');
 const TCGCSV_BASE = 'https://tcgcsv.com/tcgplayer/3';
 
 // Date from which we start tracking sets — SV era launched early 2023
@@ -80,15 +83,28 @@ async function syncCards() {
         : null;
       const rarity = rarityField?.value ?? null;
 
+      // Look up TCGDex ID for high-res image
+      const cleanName = product.name.replace(/-\s*\d+\/\d+\s*$/, '').trim();
+      let tcgdexId = null;
+      try {
+        const results = await tcgdex.card.list(
+          Query.create()
+            .contains('name', cleanName)
+            .equal('localId', String(collectorNum))
+        );
+        if (results && results.length > 0) tcgdexId = results[0].id;
+      } catch (_) {}
+
       await db.query(
         `INSERT INTO tracked_cards
-           (product_id, group_id, set_name, name, collector_number, set_total, image_url, tcgplayer_url, rarity)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+           (product_id, group_id, set_name, name, collector_number, set_total, image_url, tcgplayer_url, rarity, tcgdex_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
          ON CONFLICT (product_id) DO UPDATE
            SET name          = EXCLUDED.name,
                image_url     = EXCLUDED.image_url,
                tcgplayer_url = EXCLUDED.tcgplayer_url,
-               rarity        = EXCLUDED.rarity`,
+               rarity        = EXCLUDED.rarity,
+               tcgdex_id     = COALESCE(tracked_cards.tcgdex_id, EXCLUDED.tcgdex_id)`,
         [
           product.productId,
           set.groupId,
@@ -99,6 +115,7 @@ async function syncCards() {
           product.imageUrl ?? null,
           product.url      ?? null,
           rarity,
+          tcgdexId,
         ]
       );
       count++;
