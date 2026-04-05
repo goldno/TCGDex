@@ -21,5 +21,5 @@ cron.schedule('0 22 * * 1', () => {
   syncCards().catch(console.error);
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`TCGDex API running on port ${PORT}`));

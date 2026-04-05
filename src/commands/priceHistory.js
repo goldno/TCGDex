@@ -6,7 +6,7 @@ const {
   ActionRowBuilder,
   ComponentType,
 } = require('discord.js');
-const db = require('../db');
+const API_URL = process.env.API_URL;
 
 // Strip the " - 204/165" number suffix from a product name for display
 function cleanName(name) {
@@ -28,20 +28,10 @@ function pctChange(current, previous) {
 
 // Build and send the price history embed for a tracked card
 async function showPriceHistory(interaction, productId) {
-  // Fetch card info and last 60 days of snapshots
-  const [cardRes, snapshotRes] = await Promise.all([
-    db.query('SELECT * FROM tracked_cards WHERE product_id = $1', [productId]),
-    db.query(
-      `SELECT snapshot_date, sub_type_name, market_price
-       FROM price_snapshots
-       WHERE product_id = $1
-       ORDER BY snapshot_date DESC, sub_type_name`,
-      [productId]
-    ),
+  const [card, snapshots] = await Promise.all([
+    fetch(`${API_URL}/cards/${productId}`).then(r => r.json()),
+    fetch(`${API_URL}/cards/${productId}/prices`).then(r => r.json()),
   ]);
-
-  const card      = cardRes.rows[0];
-  const snapshots = snapshotRes.rows;
 
   const embed = new EmbedBuilder()
     .setTitle(cleanName(card.name))
@@ -130,15 +120,7 @@ module.exports = {
     const input = interaction.options.getString('name').trim();
     await interaction.deferReply();
 
-    // Search tracked_cards by name
-    const { rows } = await db.query(
-      `SELECT product_id, name, set_name, collector_number, set_total
-       FROM tracked_cards
-       WHERE name ILIKE $1
-       ORDER BY set_name, collector_number
-       LIMIT 25`,
-      [`%${input}%`]
-    );
+    const rows = await fetch(`${API_URL}/cards?search=${encodeURIComponent(input)}`).then(r => r.json());
 
     if (rows.length === 0) {
       return interaction.editReply(
