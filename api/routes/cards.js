@@ -22,10 +22,38 @@ router.get('/', async (req, res) => {
   try {
     let query, params;
     if (search) {
-      query = `SELECT * FROM tracked_cards WHERE name ILIKE $1 ORDER BY set_name, collector_number LIMIT 50`;
+      query = `
+        SELECT c.*,
+          p.market_price AS latest_price,
+          p.sub_type_name AS latest_price_type
+        FROM tracked_cards c
+        LEFT JOIN LATERAL (
+          SELECT market_price, sub_type_name
+          FROM price_snapshots
+          WHERE product_id = c.product_id
+          ORDER BY snapshot_date DESC,
+            CASE sub_type_name WHEN 'Holofoil' THEN 0 WHEN 'Normal' THEN 1 ELSE 2 END
+          LIMIT 1
+        ) p ON true
+        WHERE c.name ILIKE $1
+        ORDER BY c.set_name, c.collector_number
+        LIMIT 50`;
       params = [`%${search}%`];
     } else {
-      query = `SELECT * FROM tracked_cards ORDER BY set_name, collector_number`;
+      query = `
+        SELECT c.*,
+          p.market_price AS latest_price,
+          p.sub_type_name AS latest_price_type
+        FROM tracked_cards c
+        LEFT JOIN LATERAL (
+          SELECT market_price, sub_type_name
+          FROM price_snapshots
+          WHERE product_id = c.product_id
+          ORDER BY snapshot_date DESC,
+            CASE sub_type_name WHEN 'Holofoil' THEN 0 WHEN 'Normal' THEN 1 ELSE 2 END
+          LIMIT 1
+        ) p ON true
+        ORDER BY c.set_name, c.collector_number`;
       params = [];
     }
     const { rows } = await db.query(query, params);
