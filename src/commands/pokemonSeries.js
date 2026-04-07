@@ -12,10 +12,10 @@ module.exports = {
   },
 
   // Aliases registered in Discord alongside the main command name
-  aliases: ['poke_series', 'pkm_series'],
+  aliases: [],
 
   data: new SlashCommandBuilder()
-    .setName('pokemon_series')
+    .setName('poke_series')
     .setDescription('List all Pokémon TCG series, or look up one by name')
     .addStringOption(opt =>
       opt.setName('name')

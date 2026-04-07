@@ -99,10 +99,10 @@ module.exports = {
   },
 
   // Aliases registered in Discord alongside the main command name
-  aliases: ['rb_card', 'rift_card'],
+  aliases: [],
 
   data: new SlashCommandBuilder()
-    .setName('riftbound_card')
+    .setName('rift_card')
     .setDescription('Look up a Riftbound TCG card')
     .addStringOption(opt =>
       opt.setName('name')

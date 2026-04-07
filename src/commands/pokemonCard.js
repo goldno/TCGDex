@@ -207,11 +207,11 @@ module.exports = {
   },
 
   // Aliases registered in Discord alongside the main command name
-  aliases: ['poke_card', 'pkm_card'],
+  aliases: [],
 
   // Register the slash command with Discord — defines the name, description, and options
   data: new SlashCommandBuilder()
-    .setName('pokemon_card')
+    .setName('poke_card')
     .setDescription('Look up a Pokémon TCG card')
     .addStringOption(opt =>
       opt.setName('name')
