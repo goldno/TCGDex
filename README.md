@@ -1,10 +1,10 @@
-# TCGDex
+# TCGDex Bot
 
-A Discord bot and REST API for looking up Pokémon and Riftbound Trading Card Game cards, with TCGPlayer price history tracking for high-rarity cards.
+A Discord bot for looking up Pokémon and Riftbound Trading Card Game cards.
 
 ---
 
-## Discord Bot
+## Commands
 
 ### Pokémon TCG
 
@@ -19,6 +19,8 @@ A Discord bot and REST API for looking up Pokémon and Riftbound Trading Card Ga
 - `/poke_card mega charizard ex` — Mega/M Charizard EX only
 - `/poke_card pikachu sir` — Pikachu Special Illustration Rares
 
+---
+
 ### Riftbound TCG
 
 | Command | Description |
@@ -29,6 +31,8 @@ A Discord bot and REST API for looking up Pokémon and Riftbound Trading Card Ga
 - `/rift_card yasuo` — all Yasuo cards
 - `/rift_card ahri spiritforged` — Ahri cards from the Spiritforged set
 
+---
+
 ### General
 
 | Command | Description |
@@ -37,61 +41,10 @@ A Discord bot and REST API for looking up Pokémon and Riftbound Trading Card Ga
 
 ---
 
-## REST API
-
-Powers the TCGDex website. Tracks TCGPlayer prices daily for high-rarity Pokémon cards (collector number exceeds base set total — Illustration Rares, Special Illustration Rares, Gold cards, etc.) from the Scarlet & Violet and Mega Evolution eras, with history going back to February 2024.
-
-**Base URL:** `https://tcgdex-api-production.up.railway.app`
-
-### Endpoints
-
-#### `GET /cards`
-
-Returns all tracked high-rarity cards. Optionally filter by name.
-
-| Parameter | Description |
-|-----------|-------------|
-| `search` | Filter by name (case-insensitive, partial match) |
-
-**Response fields:** `product_id`, `set_name`, `name`, `collector_number`, `set_total`, `rarity`, `tcgplayer_url`, `tcgdex_id`, `tcgdex_image_url`, `latest_price`, `latest_price_type`
-
----
-
-#### `GET /cards/:id`
-
-Returns a single tracked card by its TCGPlayer product ID. Returns `404` if not found.
-
----
-
-#### `GET /cards/:id/prices`
-
-Returns the full price history for a card ordered by date descending.
-
-```json
-[
-  {
-    "snapshot_date": "2026-04-04T04:00:00.000Z",
-    "sub_type_name": "Holofoil",
-    "market_price": "20.66",
-    "low_price": "15.60",
-    "mid_price": "22.30",
-    "high_price": "179.86"
-  }
-]
-```
-
----
-
-## Database
-
-A PostgreSQL database stores all tracked cards and their price history. Prices are fetched daily from [TCGCSV](https://tcgcsv.com) and saved as snapshots, building up a historical record over time. The REST API reads directly from this database to serve card and price data to the website [TCGDexWebsite](https://goldno.github.io/tcgdex-website/).
-
----
-
 ## Data Sources
 
 | Source | Used for |
 |--------|---------|
-| [TCGDex API](https://tcgdex.dev) | Pokémon card, set, and series data + high-res card images. Powers the discord bot. |
-| [TCGCSV](https://tcgcsv.com) | Daily TCGPlayer price snapshots + historical price archives. Powers the TCGDex website. |
-| [Riftcodex](https://riftcodex.com) | Riftbound card data and TCGPlayer IDs. Powers the discord bot. |
+| [TCGDex](https://tcgdex.dev) | Pokémon card, set, and series data + card images |
+| [TCGCSV](https://tcgcsv.com) | Riftbound TCGPlayer market prices |
+| [Riftcodex](https://riftcodex.com) | Riftbound card data |
