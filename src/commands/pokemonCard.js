@@ -15,51 +15,6 @@ const { Query } = require('@tcgdex/sdk');
 // Create a single SDK instance set to English
 const tcgdex = new TCGdex('en');
 
-const TCGCSV_BASE = 'https://tcgcsv.com/tcgplayer/3';
-
-// Fetches the TCGPlayer market price for a Pokémon card via TCGCSV.
-// Matches by set name, card name, and collector number.
-async function fetchPokemonPrice(cardName, setName, localId) {
-  if (!setName || !localId) return null;
-  try {
-    const groupsRes = await fetch(`${TCGCSV_BASE}/groups`);
-    if (!groupsRes.ok) return null;
-    const groups = (await groupsRes.json()).results ?? [];
-
-    // Match the TCGDex set name against TCGCSV group names (bidirectional contains)
-    const lc = setName.toLowerCase();
-    const group = groups.find(g => {
-      const gn = g.name.toLowerCase();
-      return gn.includes(lc) || lc.includes(gn);
-    });
-    if (!group) return null;
-
-    // Fetch products and prices for the matched set in parallel
-    const [productsData, pricesData] = await Promise.all([
-      fetch(`${TCGCSV_BASE}/${group.groupId}/products`).then(r => r.ok ? r.json() : { results: [] }),
-      fetch(`${TCGCSV_BASE}/${group.groupId}/prices`).then(r => r.ok ? r.json() : { results: [] }),
-    ]);
-
-    const products = productsData.results ?? [];
-    const prices   = pricesData.results ?? [];
-
-    // Match by card name (case-insensitive) and collector number
-    const nameLc = cardName.toLowerCase();
-    const num    = String(localId).replace(/\/.*$/, ''); // strip "/total" if present
-    const product = products.find(p => {
-      const cardNum = p.extendedData?.find(d => d.name === 'Number')?.value;
-      return p.name.toLowerCase() === nameLc && String(cardNum) === num;
-    });
-    if (!product) return null;
-
-    // Prefer Holofoil price, then Normal, then whatever is available
-    const entries = prices.filter(p => p.productId === product.productId);
-    return entries.find(p => p.subTypeName === 'Holofoil')
-      ?? entries.find(p => p.subTypeName === 'Normal')
-      ?? entries[0]
-      ?? null;
-  } catch (_) { return null; }
-}
 
 // Parses the user's raw input into:
 //   pokemonName — the actual Pokémon to search for (e.g. "charizard")
@@ -121,8 +76,6 @@ async function showCard(interaction, cardId) {
     return interaction.editReply({ content: 'Failed to fetch card details.', components: [] });
   }
 
-  const price = await fetchPokemonPrice(detail.name, detail.set?.name, detail.localId);
-
   // Build the embed with a yellow colour (Pokémon TCG yellow)
   const embed = new EmbedBuilder()
     .setTitle(`${detail.name} — ${cardId}`)
@@ -151,15 +104,24 @@ async function showCard(interaction, cardId) {
     if (available) embed.addFields({ name: 'Variants', value: available, inline: false });
   }
 
-  // Show TCGPlayer market price from TCGCSV
-  if (price?.marketPrice != null) {
-    const lines = [
-      `Market: $${Number(price.marketPrice).toFixed(2)}`,
-      price.lowPrice  != null ? `Low: $${Number(price.lowPrice).toFixed(2)}`   : null,
-      price.midPrice  != null ? `Mid: $${Number(price.midPrice).toFixed(2)}`   : null,
-      price.highPrice != null ? `High: $${Number(price.highPrice).toFixed(2)}` : null,
-    ].filter(Boolean);
-    embed.addFields({ name: `TCGPlayer Price (${price.subTypeName ?? 'Normal'})`, value: lines.join('\n'), inline: false });
+  // Show TCGPlayer market prices — currently null for most modern cards due to a TCGDex API issue.
+  // This will populate automatically once they resolve it.
+  if (detail.pricing?.tcgplayer) {
+    const tcp = detail.pricing.tcgplayer;
+    const variantPrices = [
+      ['Normal',           tcp.normal],
+      ['Reverse Holo',     tcp['reverse-holofoil']],
+      ['Holo',             tcp.holofoil],
+      ['1st Edition',      tcp['1st-edition']],
+      ['1st Edition Holo', tcp['1st-edition-holofoil']],
+      ['Unlimited',        tcp.unlimited],
+    ];
+    const lines = variantPrices
+      .filter(([, data]) => data?.marketPrice != null)
+      .map(([label, data]) => `${label}: $${data.marketPrice.toFixed(2)}`);
+    if (lines.length) {
+      embed.addFields({ name: `TCGPlayer Market Price (${tcp.unit})`, value: lines.join('\n'), inline: false });
+    }
   }
 
   await interaction.editReply({ content: null, embeds: [embed], components: [] });
