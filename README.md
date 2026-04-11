@@ -1,6 +1,6 @@
 # TCGDex Bot
 
-A Discord bot for looking up Pokémon and Riftbound Trading Card Game cards.
+A Discord bot for looking up Pokémon and Riftbound TCG card information and market value.
 
 ---
 
@@ -46,5 +46,5 @@ A Discord bot for looking up Pokémon and Riftbound Trading Card Game cards.
 | Source | Used for |
 |--------|---------|
 | [TCGDex](https://tcgdex.dev) | Pokémon card, set, and series data + card images |
-| [TCGCSV](https://tcgcsv.com) | Riftbound TCGPlayer market prices |
+| [TCGCSV](https://tcgcsv.com) | TCGPlayer market prices for Pokémon and Riftbound cards |
 | [Riftcodex](https://riftcodex.com) | Riftbound card data |
