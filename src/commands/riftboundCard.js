@@ -8,7 +8,30 @@ const {
   ComponentType,
 } = require('discord.js');
 
-const BASE = 'https://api.riftcodex.com';
+const BASE         = 'https://api.riftcodex.com';
+const TCGCSV_BASE  = 'https://tcgcsv.com/tcgplayer/89';
+
+// Fetches the TCGPlayer market price for a Riftbound card using its tcgplayer_id
+async function fetchRiftboundPrice(tcgplayerId) {
+  if (!tcgplayerId) return null;
+  const id = parseInt(tcgplayerId);
+  try {
+    const groupsRes = await fetch(`${TCGCSV_BASE}/groups`);
+    if (!groupsRes.ok) return null;
+    const groups = (await groupsRes.json()).results ?? [];
+
+    const results = await Promise.all(
+      groups.map(group =>
+        fetch(`${TCGCSV_BASE}/${group.groupId}/prices`)
+          .then(r => r.ok ? r.json() : { results: [] })
+          .then(d => (d.results ?? []).find(p => p.productId === id) ?? null)
+          .catch(() => null)
+      )
+    );
+    return results.find(r => r != null) ?? null;
+  } catch (_) {}
+  return null;
+}
 
 // Fetches a single Riftbound card by its Riftcodex ID and displays it as a Discord embed
 async function showCard(interaction, cardId) {
@@ -20,6 +43,9 @@ async function showCard(interaction, cardId) {
 
   // All fields are nested — destructure for convenience
   const { classification = {}, media = {}, set = {} } = card;
+
+  // Fetch price in parallel with building the embed
+  const price = await fetchRiftboundPrice(card.tcgplayer_id);
 
   // Build the embed — Riftbound blue accent colour
   const embed = new EmbedBuilder()
@@ -36,8 +62,18 @@ async function showCard(interaction, cardId) {
   if (classification.supertype) embed.addFields({ name: 'Supertype', value: classification.supertype, inline: true });
   if (classification.domain?.length) embed.addFields({ name: 'Domain', value: classification.domain.join(', '), inline: true });
   if (card.collector_number) embed.addFields({ name: 'Number', value: String(card.collector_number), inline: true });
-
   if (media.artist) embed.addFields({ name: 'Artist', value: media.artist, inline: true });
+
+  // Price field
+  if (price?.marketPrice != null) {
+    const lines = [
+      `Market: $${Number(price.marketPrice).toFixed(2)}`,
+      price.lowPrice  != null ? `Low: $${Number(price.lowPrice).toFixed(2)}`   : null,
+      price.midPrice  != null ? `Mid: $${Number(price.midPrice).toFixed(2)}`   : null,
+      price.highPrice != null ? `High: $${Number(price.highPrice).toFixed(2)}` : null,
+    ].filter(Boolean);
+    embed.addFields({ name: `TCGPlayer Price (${price.subTypeName ?? 'Normal'})`, value: lines.join('\n'), inline: false });
+  }
 
   await interaction.editReply({ content: null, embeds: [embed], components: [] });
 }
