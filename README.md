@@ -84,7 +84,7 @@ Returns the full price history for a card ordered by date descending.
 
 ## Database
 
-A PostgreSQL database stores all tracked cards and their price history. Prices are fetched daily from [TCGCSV](https://tcgcsv.com) and saved as snapshots, building up a historical record over time. The REST API reads directly from this database to serve card and price data to the website [TCGDex](https://goldno.github.io/tcgdex-website/).
+A PostgreSQL database stores all tracked cards and their price history. Prices are fetched daily from [TCGCSV](https://tcgcsv.com) and saved as snapshots, building up a historical record over time. The REST API reads directly from this database to serve card and price data to the website [TCGDexWebsite](https://goldno.github.io/tcgdex-website/).
 
 ---
 
@@ -92,6 +92,6 @@ A PostgreSQL database stores all tracked cards and their price history. Prices a
 
 | Source | Used for |
 |--------|---------|
-| [TCGDex](https://tcgdex.dev) | Pokémon card, set, and series data + high-res card images |
-| [TCGCSV](https://tcgcsv.com) | Daily TCGPlayer price snapshots + historical price archives |
-| [Riftcodex](https://riftcodex.com) | Riftbound card data and TCGPlayer IDs |
+| [TCGDex API](https://tcgdex.dev) | Pokémon card, set, and series data + high-res card images. Powers the discord bot. |
+| [TCGCSV](https://tcgcsv.com) | Daily TCGPlayer price snapshots + historical price archives. Powers the TCGDex website. |
+| [Riftcodex](https://riftcodex.com) | Riftbound card data and TCGPlayer IDs. Powers the discord bot. |
